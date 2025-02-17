@@ -2,6 +2,8 @@ package com.yishui.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yishui.usercenter.common.ErrorCode;
+import com.yishui.usercenter.exception.BusinessException;
 import com.yishui.usercenter.mapper.UserMapper;
 import com.yishui.usercenter.model.domain.User;
 import com.yishui.usercenter.service.UserService;
@@ -14,6 +16,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.yishui.usercenter.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * @author yishui
@@ -36,22 +40,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public long userRegister(String userAccount, String userPassword, String checkPassword,String planetCode) {
         // 1. 校验
         // 检查字符串是否为空或者是否是空白字符串（即只包含空格的字符串）
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
         if (userAccount.length() < 4) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户账号过短");
         }
         if (userPassword.length() < 8 || checkPassword.length() < 8) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户密码过短");
+        }
+        if(planetCode.length()>8){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"星球编号过长");
         }
         // 账户不能重复
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
         long count = this.count(queryWrapper);
+        if (count > 0) {
+            return -1;
+        }
+        // 星球编号不能重复
+        queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("planetCode", planetCode);
+        count = this.count(queryWrapper);
         if (count > 0) {
             return -1;
         }
@@ -115,22 +129,44 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return null;
         }
         // 3. 用户脱敏
-        User safeUser = new User();
-        safeUser.setId(user.getId());
-        safeUser.setUsername(user.getUsername());
-        safeUser.setUserAccount(user.getUserAccount());
-        safeUser.setAvatarUrl(user.getAvatarUrl());
-        safeUser.setGender(user.getGender());
-        safeUser.setEmail(user.getEmail());
-        safeUser.setUserStatus(0);
-        safeUser.setPhone(user.getPhone());
-        safeUser.setCreateTime(user.getCreateTime());
+        User safeUser = getSafetyUser(user);
         // 4. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        request.getSession().setAttribute(USER_LOGIN_STATE, safeUser);
 
 
         return safeUser;
     }
+
+    /**
+     * 用户脱敏
+     *
+     * @param originUser
+     * @return
+     */
+    @Override
+    public User getSafetyUser(User originUser){
+        User safeUser = new User();
+        safeUser.setId(originUser.getId());
+        safeUser.setUsername(originUser.getUsername());
+        safeUser.setUserAccount(originUser.getUserAccount());
+        safeUser.setAvatarUrl(originUser.getAvatarUrl());
+        safeUser.setGender(originUser.getGender());
+        safeUser.setPhone(originUser.getPhone());
+        safeUser.setEmail(originUser.getEmail());
+        safeUser.setPlanetCode(originUser.getPlanetCode());
+        safeUser.setUserRole(originUser.getUserRole());
+        safeUser.setUserStatus(originUser.getUserStatus());
+        safeUser.setCreateTime(originUser.getCreateTime());
+        return safeUser;
+    }
+
+    @Override
+    public int userLogout(HttpServletRequest request) {
+        //移除登录态
+        request.getSession().removeAttribute(USER_LOGIN_STATE);
+        return 1;
+    }
+
 }
 
 

@@ -12,8 +12,8 @@ import javax.servlet.http.HttpServletRequest;
 */
 public interface UserService extends IService<User> {
 
-    // 用户登录
-    public static final String USER_LOGIN_STATE = "userLoginState";
+//    // 用户登录
+//    public static final String USER_LOGIN_STATE = "userLoginState";
 
     /**
      * 用户注册
@@ -22,7 +22,7 @@ public interface UserService extends IService<User> {
      * @param checkPassword 校验密码
      * @return 新用户 id
      */
-    long userRegister(String userAccount,String userPassword,String checkPassword);
+    long userRegister(String userAccount,String userPassword,String checkPassword,String planetCode);
 
     /**
      *
@@ -31,5 +31,20 @@ public interface UserService extends IService<User> {
      * @return 脱敏后的用户信息
      */
     User userLogin(String userAccount, String userPassword, HttpServletRequest request);
+
+    /**
+     * 用户脱敏
+     * @param originUser 原用户对象
+     * @return
+     */
+    User getSafetyUser(User originUser);
+
+    /**
+     * 用户注销
+     * @param request
+     * @return
+     */
+    int userLogout(HttpServletRequest request);
+
 }
 
